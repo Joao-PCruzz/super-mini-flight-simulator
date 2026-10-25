@@ -13,9 +13,11 @@
 float raio_planeta = 1.0f;
 float sol_x = 3.0f, sol_y = 2.0f, sol_z = -2.0f;
 
+// Variável global para capturar o modo de exibição das formas
+bool modo_visual = false;
+
 // Função para desenhar a esfera, seguindo uma lógica em camadas e utilizando laços aninhados
 void desenharEsfera(float raio, int latitude, int longitude) {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     // Função para criar dois aneis paralelos, calculando sua latitude de -90° até 90°
     for(int i = 0; i < latitude; i++) {
         float lat0 = M_PI * (-0.5f + (float)i / latitude);
@@ -93,6 +95,18 @@ void redimensionar(GLFWwindow* window, int largura, int altura) {
     glMatrixMode(GL_MODELVIEW);
 }
 
+// Função para capturar a tecla R e mudar a exibição das formas
+void key_R(GLFWwindow* window, int tecla, int scancode, int acao, int mods) {
+    if(tecla == GLFW_KEY_R && acao == GLFW_PRESS) {
+        modo_visual = !modo_visual;
+        if(modo_visual) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Modo malha
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Modo solido
+        }
+    }
+}
+
 void iniciar() {
     // Cor de limpeza: preto
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -121,6 +135,8 @@ int main() {
     glfwMakeContextCurrent(window);
     // Registra o callback para detectar mudanças de tamanho da janela
     glfwSetFramebufferSizeCallback(window, redimensionar);
+    // Registra o callback da tecla R 
+    glfwSetKeyCallback(window, key_R);
     
     iniciar();
     // loop de execução
