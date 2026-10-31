@@ -75,7 +75,7 @@ void desenhar() {
     glPopMatrix();
 
     // Troca os buffers após o desenho
-    glfwSwapBuffers(glfwGetCurrentContext());
+    //glfwSwapBuffers(glfwGetCurrentContext());
 }
 
 // Função para redimensionar a tela em caso de alteração de tamanho
