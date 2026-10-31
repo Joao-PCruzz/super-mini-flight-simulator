@@ -9,9 +9,6 @@
 // g++ src/main.cpp -o bin/simulador -lglfw -lGL -lGLU
 // ./bin/simulador
 
-// Variáveis globais da posição do sol e raio do planeta
-float raio_planeta = 1.0f;
-float sol_x = 3.0f, sol_y = 2.0f, sol_z = -2.0f;
 
 // Variável global para capturar o modo de exibição das formas
 bool modo_visual = false;
@@ -43,7 +40,7 @@ void desenharEsfera(float raio, int latitude, int longitude) {
     }
 }
 
-void desenhar() {
+void desenhar(float raio_planeta, float sol_x, float sol_y, float sol_z) {
     // Limpando os buffers essenciais para figuras 3D
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // Alterando para o ModelView para poder realizar operações de transformação
@@ -64,14 +61,14 @@ void desenhar() {
     // Desenhar o planeta
     glPushMatrix();
         glColor3ub(0, 255, 0);
-        desenharEsfera(raio_planeta, 20, 20);
+        desenharEsfera(raio_planeta, 20, 40);
     glPopMatrix();
 
     // Desenhar sol
     glPushMatrix();
         glTranslatef(sol_x, sol_y, sol_z);
         glColor3ub(255, 255, 0);
-        desenharEsfera(0.5f, 10, 10);
+        desenharEsfera(raio_planeta * 0.5f, 20, 40);
     glPopMatrix();
 
     // Troca os buffers após o desenho
@@ -120,9 +117,14 @@ void iniciar() {
     glMatrixMode(GL_MODELVIEW);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     //Incializando o GLFW
     if(!glfwInit()) return -1;
+
+
+    // Variáveis da posição do sol e raio do planeta
+    float raio_planeta = std::stoi(argv[1]);
+    float sol_x = std::stoi(argv[2]), sol_y = std::stoi(argv[3]), sol_z = std::stoi(argv[4]);
 
     // Criação da janela
     GLFWwindow* window = glfwCreateWindow(600, 600, "Super Mini Fligth Simulator - Fase 1", NULL, NULL);
@@ -142,7 +144,7 @@ int main() {
     // loop de execução
     while (!glfwWindowShouldClose(window)) {
 		// Destinado a funções do programa
-        desenhar();
+        desenhar(raio_planeta, sol_x, sol_y, sol_z);
         // Troca de buffers
         glfwSwapBuffers(window);
         // Processa eventos do loop
