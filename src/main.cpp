@@ -87,8 +87,15 @@ void redimensionar(GLFWwindow* window, int largura, int altura) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
+    float limite = 100000.0f;
+    float *limite_ptr = reinterpret_cast<float *>(glfwGetWindowUserPointer(window));
+    if (limite_ptr)
+    {
+        limite = *limite_ptr;
+    }
+
     // Alteração da perspectiva de acordo com o aspecto
-    gluPerspective(60, aspect, 0.1f, 100.0f);
+    gluPerspective(60, aspect, 0.1f, limite);
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -104,7 +111,7 @@ void key_R(GLFWwindow* window, int tecla, int scancode, int acao, int mods) {
     }
 }
 
-void iniciar() {
+void iniciar(float limite_visao) {
     // Cor de limpeza: preto
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glEnable(GL_DEPTH_TEST); // Ativa o teste de profundidade dos Z-Buffers
@@ -113,7 +120,7 @@ void iniciar() {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(60.0, 1.0, 0.1, 100.0);
+    gluPerspective(60.0, 1.0, 0.1, limite_visao);
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -125,6 +132,9 @@ int main(int argc, char *argv[]) {
     // Variáveis da posição do sol e raio do planeta
     float raio_planeta = std::stoi(argv[1]);
     float sol_x = std::stoi(argv[2]), sol_y = std::stoi(argv[3]), sol_z = std::stoi(argv[4]);
+    // Distancia limite da visão da camera
+    float limite_visao = 10.0f * raio_planeta + 0.5f;
+    float* limite_visao_ptr = &limite_visao;
 
     // Criação da janela
     GLFWwindow* window = glfwCreateWindow(600, 600, "Super Mini Fligth Simulator - Fase 1", NULL, NULL);
@@ -136,11 +146,12 @@ int main(int argc, char *argv[]) {
      // Associa janela criada ao contexto opengl a ser usado
     glfwMakeContextCurrent(window);
     // Registra o callback para detectar mudanças de tamanho da janela
+    glfwSetWindowUserPointer(window, reinterpret_cast<float *>(limite_visao_ptr));
     glfwSetFramebufferSizeCallback(window, redimensionar);
     // Registra o callback da tecla R 
     glfwSetKeyCallback(window, key_R);
     
-    iniciar();
+    iniciar(limite_visao);
     // loop de execução
     while (!glfwWindowShouldClose(window)) {
 		// Destinado a funções do programa
