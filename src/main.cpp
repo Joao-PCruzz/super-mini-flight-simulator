@@ -55,8 +55,8 @@ void desenhar(float raio_planeta, float sol_x, float sol_y, float sol_z) {
             0.0, 1.0, 0.0);
 
     // Rotacionar o mundo inteiro para ver a câmera em ação (para ver o mundo como um todo)
-    float tempo = (float)glfwGetTime();
-    glRotatef(tempo * 25.0f, 0.0f, 1.0f, 0.0f); // Gira em torno do eio y
+    //float tempo = (float)glfwGetTime();
+    //glRotatef(tempo * 25.0f, 0.0f, 1.0f, 0.0f); // Gira em torno do eio y
 
     // Desenhar o planeta
     glPushMatrix();
