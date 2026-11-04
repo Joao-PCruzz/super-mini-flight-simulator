@@ -130,8 +130,8 @@ int main(int argc, char *argv[]) {
 
 
     // Variáveis da posição do sol e raio do planeta
-    float raio_planeta = std::stoi(argv[1]);
-    float sol_x = std::stoi(argv[2]), sol_y = std::stoi(argv[3]), sol_z = std::stoi(argv[4]);
+    float raio_planeta = std::stof(argv[1]);
+    float sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
     // Distancia limite da visão da camera
     float distancia_sol = sqrt(pow((sol_x + (raio_planeta * 4.0f + 5.0f)), 2.0f) + pow(sol_y, 2.0f) + pow(sol_z, 2.0f));
     float limite_visao = std::max((5.0f + sqrtf(3.0f)) * raio_planeta + 5.0f, distancia_sol + (0.5f + sqrtf(3.0f)) * raio_planeta);
