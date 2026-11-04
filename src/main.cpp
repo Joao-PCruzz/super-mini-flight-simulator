@@ -131,12 +131,16 @@ int main(int argc, char *argv[]) {
     // Variáveis da posição do sol e raio do planeta
     float raio_planeta = std::stof(argv[1]);
     float sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    if (sol_x * sol_x + sol_y * sol_y + sol_z * sol_z <= raio_planeta * raio_planeta)
+    {
+        std::cout << "Sol nao pode estar dentro do planeta\n";
+        return 0; 
+    }
     // Raio do sol
     float raio_sol = 0.5f * raio_planeta;
     // Distancia da camera em relação a origem
     float distancia_z_camera_sol = 0.1f + (sqrtf(sol_x * sol_x + sol_y * sol_y) + 3.0f * raio_sol) / tanf(M_PI / 6.0f);
     float distancia_camera = std::max(distancia_z_camera_sol + sol_z + raio_sol, 0.1f + raio_planeta * 4.0f);
-    std::cout << "distancia camera: " << distancia_camera << '\n';
     // Distancia limite da visão da camera
     float limite_visao = std::max(sqrtf(3.0f) * raio_planeta + distancia_camera, distancia_camera - (sol_z - raio_sol) + sqrtf(3.0f) * raio_sol);
     float* limite_visao_ptr = &limite_visao;
