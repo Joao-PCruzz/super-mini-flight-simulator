@@ -40,7 +40,7 @@ void desenharEsfera(float raio, int latitude, int longitude) {
     }
 }
 
-void desenhar(float raio_planeta, float sol_x, float sol_y, float sol_z) {
+void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, float sol_z, float distancia_camera) {
     // Limpando os buffers essenciais para figuras 3D
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // Alterando para o ModelView para poder realizar operações de transformação
@@ -48,9 +48,8 @@ void desenhar(float raio_planeta, float sol_x, float sol_y, float sol_z) {
     glLoadIdentity();
 
     // Posiciona a câmera fastado em Z
-    // A distCam é responsável por definir a distância da câmera me relação ao planeta
-    float distCam = raio_planeta * 4.0f + 5.0f;
-    gluLookAt(0.0, 0.0, distCam,
+    // A distancia_camera é responsável por definir a distância da câmera me relação ao planeta
+    gluLookAt(0.0, 0.0, distancia_camera,
             0.0, 0.0, 0.0,
             0.0, 1.0, 0.0);
 
@@ -68,7 +67,7 @@ void desenhar(float raio_planeta, float sol_x, float sol_y, float sol_z) {
     glPushMatrix();
         glTranslatef(sol_x, sol_y, sol_z);
         glColor3ub(255, 255, 0);
-        desenharEsfera(raio_planeta * 0.5f, 20, 40);
+        desenharEsfera(raio_sol, 20, 40);
     glPopMatrix();
 
     // Troca os buffers após o desenho
@@ -132,9 +131,14 @@ int main(int argc, char *argv[]) {
     // Variáveis da posição do sol e raio do planeta
     float raio_planeta = std::stof(argv[1]);
     float sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    // Raio do sol
+    float raio_sol = 0.5f * raio_planeta;
+    // Distancia da camera em relação a origem
+    float distancia_z_camera_sol = 0.1f + (sqrtf(sol_x * sol_x + sol_y * sol_y) + 3.0f * raio_sol) / tanf(M_PI / 6.0f);
+    float distancia_camera = std::max(distancia_z_camera_sol + sol_z + raio_sol, 0.1f + raio_planeta * 4.0f);
+    std::cout << "distancia camera: " << distancia_camera << '\n';
     // Distancia limite da visão da camera
-    float distancia_sol = sqrt(pow((sol_x + (raio_planeta * 4.0f + 5.0f)), 2.0f) + pow(sol_y, 2.0f) + pow(sol_z, 2.0f));
-    float limite_visao = std::max((5.0f + sqrtf(3.0f)) * raio_planeta + 5.0f, distancia_sol + (0.5f + sqrtf(3.0f)) * raio_planeta);
+    float limite_visao = std::max(sqrtf(3.0f) * raio_planeta + distancia_camera, distancia_camera - (sol_z - raio_sol) + sqrtf(3.0f) * raio_sol);
     float* limite_visao_ptr = &limite_visao;
 
     // Criação da janela
@@ -156,7 +160,7 @@ int main(int argc, char *argv[]) {
     // loop de execução
     while (!glfwWindowShouldClose(window)) {
 		// Destinado a funções do programa
-        desenhar(raio_planeta, sol_x, sol_y, sol_z);
+        desenhar(raio_planeta, raio_sol, sol_x, sol_y, sol_z, distancia_camera);
         // Troca de buffers
         glfwSwapBuffers(window);
         // Processa eventos do loop
