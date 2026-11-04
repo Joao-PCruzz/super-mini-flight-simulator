@@ -7,7 +7,7 @@
 
 //Comando para compilar o código:
 // g++ src/main.cpp -o bin/simulador -lglfw -lGL -lGLU
-// ./bin/simulador
+// ./bin/simulador <raio_terra> <x_sol> <y_sol> <z_sol>
 
 
 // Variável global para capturar o modo de exibição das formas
