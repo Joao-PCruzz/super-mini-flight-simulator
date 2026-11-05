@@ -1,4 +1,7 @@
 # super-mini-flight-simulator
+## Integrantes
+* João Pedro Cardoso Arruda
+* João Pedro Costa Cruz
 
 ## Como executar:
 No terminal rode
