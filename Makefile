@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -std=c++11
+CXXFLAGS = -Wall -std=gnu++20
 SRC = src/main.cpp
 
 # Valores definidos para falta de parâmetro da função
@@ -10,9 +10,9 @@ ifeq ($(OS),Windows_NT)
 	# configurações para windows
 	LIBS = -lglfw3 -lopengl32 -lglu32 -lgdi32
 	EXEC = bin/simulador.exe
-	MKDIR = if not exist mkdir bin
-	RM = rmdir /s /q bin
-	RUN = bin\simulador.exe
+	MKDIR = if not exist bin mkdir bin
+	RM = if exist bin rmdir /s /q bin
+	RUN = bin/simulador.exe
 else
 	# Configurações para Linux
 	LIBS = -lglfw -lGL -lGLU
