@@ -1,5 +1,33 @@
-simulador_linux: src/main.cpp
-	g++ src/main.cpp -o bin/simulador -lglfw -lGL -lGLU
+CXX = g++
+CXXFLAGS = -Wall -std=gnu++20
+SRC = src/main.cpp
 
-simulador_windows: src/main.cpp
-	g++ src/main.cpp -o bin/simulador -lglfw3 -lopengl32 -lglu32 -lgdi32
+# Valores definidos para falta de parâmetro da função
+ARGS ?= 1.0 0.0 0.0 5.0
+
+# Detecção do sistema operacional
+ifeq ($(OS),Windows_NT)
+	# configurações para windows
+	LIBS = -lglfw3 -lopengl32 -lglu32 -lgdi32
+	EXEC = bin/simulador.exe
+	MKDIR = if not exist bin mkdir bin
+	RM = if exist bin rmdir /s /q bin
+	RUN = bin/simulador.exe
+else
+	# Configurações para Linux
+	LIBS = -lglfw -lGL -lGLU
+	EXEC = bin/simulador
+	MKDIR = mkdir -p bin
+	RM = rm -rf bin
+	RUN = ./$(EXEC)
+endif
+
+all:
+	@$(MKDIR)
+	$(CXX) $(CXXFLAGS) $(SRC) -o $(EXEC) $(LIBS)
+
+run: all
+	$(RUN) $(ARGS)
+
+clean:
+	$(RM)
