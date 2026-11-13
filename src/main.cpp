@@ -294,11 +294,10 @@ int main(int argc, char *argv[]) {
     plano_proximo = 0.1f * raio_planeta;
     // Raio do sol
     float raio_sol = 0.5f * raio_planeta;
-    // Distancia da camera em relação a origem
-    float distancia_z_camera_sol = 0.1f + (sqrtf(sol_x * sol_x + sol_y * sol_y) + 3.0f * raio_sol) / tanf(M_PI / 6.0f);
-    float distancia_camera = std::max(distancia_z_camera_sol + sol_z + raio_sol, 0.1f + raio_planeta * 4.0f);
+    // Distancia do sol em relação a origem
+    float distancia_sol = sqrtf(pow(sol_x, 2.0f) + pow(sol_y, 2.0f) + pow(sol_z, 2.0f));
     // Distancia limite da visão da camera
-    float limite_visao = std::max(sqrtf(3.0f) * raio_planeta + distancia_camera, distancia_camera - (sol_z - raio_sol) + sqrtf(3.0f) * raio_sol);
+    float limite_visao = raio_planeta * 1.5f + distancia_sol + raio_sol * 2.0f;
     float* limite_visao_ptr = &limite_visao;
 
     //Incializando o GLFW
