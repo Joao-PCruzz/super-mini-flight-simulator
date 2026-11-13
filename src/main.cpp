@@ -3,33 +3,44 @@
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <array>
 #include <cmath>
 
 // Comando para compilar o código:
 // make run ARGS="<raio_terra> <x_sol> <y_sol> <z_sol>"
-// Se utilizar somente o make run os parâmetros serão o default (1.0, 2.0, 0.0 0.0) 
+// Se utilizar somente o make run os parâmetros serão o default (1.0, 0.0, 0.0, 5.0) 
 
-// Struct que cria um vetor de 3 coordenadas com operações básicas
+// Struct que cria um vetor com 3 coordenadas e a flag de ponto ou vetor com operações básicas
 struct Vetor3 {
-    float x, y, z;
+    std::array<float, 4> coordinates;
     // Soma dois vetores
-    Vetor3 operator+(const Vetor3& v) const { return {x + v.x, y + v.y, z + v.z}; }
+    Vetor3 operator+(const Vetor3& v) const { return {coordinates[0] + v.coordinates[0], coordinates[1] + v.coordinates[1], coordinates[2] + v.coordinates[2]}; }
     // Subtração de dois vetores
-    Vetor3 operator-(const Vetor3& v) const { return {x - v.x, y - v.y, z - v.z}; }
+    Vetor3 operator-(const Vetor3& v) const { return {coordinates[0] - v.coordinates[0], coordinates[1] - v.coordinates[1], coordinates[2] - v.coordinates[2]}; }
     // Multiplica um vetor por um escalar
-    Vetor3 operator*(float escalar) const { return {x * escalar, y * escalar, z * escalar}; } 
+    Vetor3 operator*(float escalar) const { return {coordinates[0] * escalar, coordinates[1] * escalar, coordinates[2] * escalar}; } 
     // Calcula o tamanho real
-    float tamanho() const { return std::sqrt(x*x + y*y + z*z); }
+    float tamanho() const { return std::sqrt(coordinates[0]*coordinates[0] + coordinates[1]*coordinates[1] + coordinates[2]*coordinates[2]); }
     // Aplica a normalização ao vetor
     Vetor3 normalizado() const {
         float tam = tamanho();
-        if (tam == 0.0f) return {0.0f, 0.0f, 0.0f};
-        return {x/tam, y/tam, z/tam};
+        if (tam == 0.0f) return {0.0f, 0.0f, 0.0f, 0.0f};
+        return {coordinates[0]/tam, coordinates[1]/tam, coordinates[2]/tam, 0.0f};
     }
 };
 
  // Operação de dot (produto escalar) entre vetores
-float dot(const Vetor3& v, const Vetor3& w) { return (w.x * v.x) + (w.y * v.y) + (w.z * v.z); }
+float dot(const Vetor3& v, const Vetor3& w) { return (w.coordinates[0] * v.coordinates[0]) + (w.coordinates[1] * v.coordinates[1]) + (w.coordinates[2] * v.coordinates[2]); }
+
+Vetor3 cross(const Vetor3& v, const Vetor3& w)
+{
+    Vetor3 u;
+    u.coordinates[0] = v.coordinates[1] * w.coordinates[2] - w.coordinates[1] * v.coordinates[2];
+    u.coordinates[1] = v.coordinates[2] * w.coordinates[0] - w.coordinates[2] * v.coordinates[0];
+    u.coordinates[2] = v.coordinates[0] * w.coordinates[1] - w.coordinates[0] * v.coordinates[1];
+    u.coordinates[3] = 0.0f;
+    return u;
+}
 
 // Enum para os estados do avião
 enum Estado_aviao {
@@ -47,6 +58,10 @@ struct Aviao {
     float velocidade = 0.0f;
     float altura_atual = 0.0f;
     Estado_aviao estado = no_chao;
+    Vetor3 direita()
+    {
+        return cross(frente, cima);
+    }
 };
 Aviao aviao;
 
@@ -87,8 +102,8 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     float altura_subida = raio_planeta / 2.0f;
     float taxa_vertical = raio_planeta * 0.1f;
     float velocidade_subida = raio_planeta * 0.1f;
-    float aceleracao = raio_planeta * 0.1f;
     float velocidade_maxima = (float)M_PI * (raio_planeta + altura_subida) / 10.0f;
+    float velocidade_minima = 0.1f * velocidade_maxima;
     float desaceleracao = velocidade_maxima / (altura_subida / taxa_vertical);
 
     if (aviao.estado == subindo) {
@@ -103,10 +118,9 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     }
 
     else if (aviao.estado == no_ar) {
-        // Aumenta a velocidade do avião em relação a aceleração
-        aviao.velocidade += aceleracao * dt;
         // Condicionais para evitar bugs no avião
-        if(aviao.velocidade > velocidade_maxima) aviao.velocidade = velocidade_maxima;
+        aviao.velocidade = std::min(aviao.velocidade, velocidade_maxima);
+        aviao.velocidade = std::max(velocidade_minima, aviao.velocidade);
     } 
 
     else if (aviao.estado == descendo) {
@@ -137,6 +151,35 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     aviao.frente = ( (aviao.frente - aviao.cima * dot(aviao.frente, aviao.cima)).normalizado() );
 }
 
+void atualizarMovimento(Aviao& aviao, float dt, float raio_planeta, GLFWwindow *window)
+{
+    if (aviao.estado != no_ar)
+    {
+        return;
+    }
+    float aceleracao_centripeta = aviao.velocidade * 0.5f;
+    float aceleracao = raio_planeta * 0.1f;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_PRESS && aviao.velocidade != 0.0f)
+    {
+        Vetor3 direcao = aviao.direita();
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao_centripeta * dt).normalizado();
+    }
+    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_PRESS && aviao.velocidade != 0.0f)
+    {
+        Vetor3 direcao = aviao.direita() * -1.0f;
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao_centripeta * dt).normalizado();
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_PRESS)
+    {
+        aviao.velocidade += aceleracao * dt;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS)
+    {
+        aviao.velocidade -= aceleracao * dt;
+    }
+}
+
 void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, float sol_z, Aviao& aviao) {
     // Limpando os buffers essenciais para figuras 3D
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -146,9 +189,9 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
 
     // Define onde a câmera (avião) está, para onde ela olha e onde é o seu "cima"
     Vetor3 alvo = aviao.posicao + aviao.frente - aviao.cima * 0.5f;
-    gluLookAt(aviao.posicao.x, aviao.posicao.y, aviao.posicao.z,
-            alvo.x, alvo.y, alvo.z,
-            aviao.cima.x, aviao.cima.y, aviao.cima.z);
+    gluLookAt(aviao.posicao.coordinates[0], aviao.posicao.coordinates[1], aviao.posicao.coordinates[2],
+            alvo.coordinates[0], alvo.coordinates[1], alvo.coordinates[2],
+            aviao.cima.coordinates[0], aviao.cima.coordinates[1], aviao.cima.coordinates[2]);
 
     // Desenhar o planeta
     glPushMatrix();
@@ -231,8 +274,12 @@ void iniciar(float limite_visao) {
 
 int main(int argc, char *argv[]) {
     // Variáveis da posição do sol e raio do planeta
-    float raio_planeta = std::stof(argv[1]);
-    float sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    float raio_planeta = 1.0f, sol_x = 0.0f, sol_y = 0.0f, sol_z = 5.0f;
+    if (argc >= 5)
+    {
+        raio_planeta = std::stof(argv[1]);
+        sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    }
     if (raio_planeta <= 0.0f)
     {
         std::cout << "O raio do planeta deve ser positivo\n";
@@ -248,11 +295,10 @@ int main(int argc, char *argv[]) {
     plano_proximo = 0.1f * raio_planeta;
     // Raio do sol
     float raio_sol = 0.5f * raio_planeta;
-    // Distancia da camera em relação a origem
-    float distancia_z_camera_sol = 0.1f + (sqrtf(sol_x * sol_x + sol_y * sol_y) + 3.0f * raio_sol) / tanf(M_PI / 6.0f);
-    float distancia_camera = std::max(distancia_z_camera_sol + sol_z + raio_sol, 0.1f + raio_planeta * 4.0f);
+    // Distancia do sol em relação a origem
+    float distancia_sol = sqrtf(pow(sol_x, 2.0f) + pow(sol_y, 2.0f) + pow(sol_z, 2.0f));
     // Distancia limite da visão da camera
-    float limite_visao = std::max(sqrtf(3.0f) * raio_planeta + distancia_camera, distancia_camera - (sol_z - raio_sol) + sqrtf(3.0f) * raio_sol);
+    float limite_visao = raio_planeta * 1.5f + distancia_sol + raio_sol * 2.0f;
     float* limite_visao_ptr = &limite_visao;
 
     //Incializando o GLFW
@@ -275,9 +321,9 @@ int main(int argc, char *argv[]) {
     
     iniciar(limite_visao);
 
-    aviao.posicao = {0.0f, raio_planeta, 0.0f};
+    aviao.posicao = {0.0f, raio_planeta, 0.0f, 1.0};
     aviao.cima = aviao.posicao.normalizado();
-    aviao.frente = {0.0f, 0.0f, -1.0f};
+    aviao.frente = {0.0f, 0.0f, -1.0f, 0.0f};
     float tempo_anterior = (float)glfwGetTime();
     // loop de execução
     while (!glfwWindowShouldClose(window)) {
@@ -289,6 +335,8 @@ int main(int argc, char *argv[]) {
 
         // Evita um salto do avião se a janela travar
         if(dt > 0.1f) dt = 0.1f;
+
+        atualizarMovimento(aviao, dt, raio_planeta, window);
 
         // Atualizar física do avião para o seu movimento
         atualizarFisica(aviao, dt, raio_planeta);

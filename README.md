@@ -17,4 +17,4 @@ No terminal rode
 
     `make run` 
 
-    No caso de utilizar somente o `make run`, serão as coordenadas Default: 1.0 0.0 0.0 5.0
+    No caso de utilizar somente o `make run`, serão as coordenadas Default: 1.0, 0.0, 0.0, 5.0
