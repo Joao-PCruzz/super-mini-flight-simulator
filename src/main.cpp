@@ -8,7 +8,7 @@
 
 // Comando para compilar o código:
 // make run ARGS="<raio_terra> <x_sol> <y_sol> <z_sol>"
-// Se utilizar somente o make run os parâmetros serão o default (1.0, 0.0, 0.0 5.0) 
+// Se utilizar somente o make run os parâmetros serão o default (1.0, 0.0, 0.0, 5.0) 
 
 // Struct que cria um vetor com 3 coordenadas e a flag de ponto ou vetor com operações básicas
 struct Vetor3 {
@@ -151,22 +151,23 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     aviao.frente = ( (aviao.frente - aviao.cima * dot(aviao.frente, aviao.cima)).normalizado() );
 }
 
-void atualizarMovimento(Aviao& aviao, float dt, GLFWwindow *window)
+void atualizarMovimento(Aviao& aviao, float dt, float raio_planeta, GLFWwindow *window)
 {
     if (aviao.estado != no_ar)
     {
         return;
     }
-    float aceleracao = aviao.velocidade * 0.2f;
+    float aceleracao_centripeta = aviao.velocidade * 0.5f;
+    float aceleracao = raio_planeta * 0.1f;
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_PRESS && aviao.velocidade != 0.0f)
     {
         Vetor3 direcao = aviao.direita();
-        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao_centripeta * dt).normalizado();
     }
     else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_PRESS && aviao.velocidade != 0.0f)
     {
         Vetor3 direcao = aviao.direita() * -1.0f;
-        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao_centripeta * dt).normalizado();
     }
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_PRESS)
@@ -335,7 +336,7 @@ int main(int argc, char *argv[]) {
         // Evita um salto do avião se a janela travar
         if(dt > 0.1f) dt = 0.1f;
 
-        atualizarMovimento(aviao, dt, window);
+        atualizarMovimento(aviao, dt, raio_planeta, window);
 
         // Atualizar física do avião para o seu movimento
         atualizarFisica(aviao, dt, raio_planeta);
