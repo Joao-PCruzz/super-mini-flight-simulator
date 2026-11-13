@@ -35,10 +35,10 @@ float dot(const Vetor3& v, const Vetor3& w) { return (w.coordinates[0] * v.coord
 Vetor3 cross(const Vetor3& v, const Vetor3& w)
 {
     Vetor3 u;
-    u.coordinates[0] = v.coordinates[1] * w.coordinates[2] - w.coordinates[0] * v.coordinates[1];
-    u.coordinates[1] = v.coordinates[2] * w.coordinates[0] - w.coordinates[1] * v.coordinates[2];
+    u.coordinates[0] = v.coordinates[1] * w.coordinates[2] - w.coordinates[1] * v.coordinates[2];
+    u.coordinates[1] = v.coordinates[2] * w.coordinates[0] - w.coordinates[2] * v.coordinates[0];
     u.coordinates[2] = v.coordinates[0] * w.coordinates[1] - w.coordinates[0] * v.coordinates[1];
-    u.coordinates[3] = 0;
+    u.coordinates[3] = 0.0f;
     return u;
 }
 
