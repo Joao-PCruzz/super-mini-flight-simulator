@@ -157,22 +157,23 @@ void atualizarMovimento(Aviao& aviao, float dt, GLFWwindow *window)
     {
         return;
     }
-    float aceleracao = aviao.velocidade * 0.2;
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    float aceleracao = aviao.velocidade * 0.2f;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_PRESS && aviao.velocidade != 0.0f)
     {
         Vetor3 direcao = aviao.direita();
         aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
     }
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_PRESS && aviao.velocidade != 0.0f)
     {
         Vetor3 direcao = aviao.direita() * -1.0f;
         aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
     }
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_PRESS)
     {
         aviao.velocidade += aceleracao * dt;
     }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS)
     {
         aviao.velocidade -= aceleracao * dt;
     }
