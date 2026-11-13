@@ -157,16 +157,16 @@ void atualizarMovimento(Aviao& aviao, float dt, GLFWwindow *window)
     {
         return;
     }
-    float aceleracao = 2.0f;
+    float aceleracao = aviao.velocidade * 0.2;
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
         Vetor3 direcao = aviao.direita();
-        aviao.frente = (aviao.frente + direcao * aceleracao * dt).normalizado();
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
         Vetor3 direcao = aviao.direita() * -1.0f;
-        aviao.frente = (aviao.frente + direcao * aceleracao * dt).normalizado();
+        aviao.frente = (aviao.frente * aviao.velocidade + direcao * aceleracao * dt).normalizado();
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
