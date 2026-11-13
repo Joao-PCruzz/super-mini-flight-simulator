@@ -103,6 +103,7 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     float taxa_vertical = raio_planeta * 0.1f;
     float velocidade_subida = raio_planeta * 0.1f;
     float velocidade_maxima = (float)M_PI * (raio_planeta + altura_subida) / 10.0f;
+    float velocidade_minima = 0.1f * velocidade_maxima;
     float desaceleracao = velocidade_maxima / (altura_subida / taxa_vertical);
 
     if (aviao.estado == subindo) {
@@ -119,7 +120,7 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     else if (aviao.estado == no_ar) {
         // Condicionais para evitar bugs no avião
         aviao.velocidade = std::min(aviao.velocidade, velocidade_maxima);
-        aviao.velocidade = std::max(0.1f, aviao.velocidade);
+        aviao.velocidade = std::max(velocidade_minima, aviao.velocidade);
     } 
 
     else if (aviao.estado == descendo) {
