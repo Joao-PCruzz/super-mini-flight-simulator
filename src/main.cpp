@@ -8,7 +8,7 @@
 
 // Comando para compilar o código:
 // make run ARGS="<raio_terra> <x_sol> <y_sol> <z_sol>"
-// Se utilizar somente o make run os parâmetros serão o default (1.0, 2.0, 0.0 0.0) 
+// Se utilizar somente o make run os parâmetros serão o default (1.0, 0.0, 0.0 5.0) 
 
 // Struct que cria um vetor com 3 coordenadas e a flag de ponto ou vetor com operações básicas
 struct Vetor3 {
@@ -272,8 +272,12 @@ void iniciar(float limite_visao) {
 
 int main(int argc, char *argv[]) {
     // Variáveis da posição do sol e raio do planeta
-    float raio_planeta = std::stof(argv[1]);
-    float sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    float raio_planeta = 1.0f, sol_x = 0.0f, sol_y = 0.0f, sol_z = 5.0f;
+    if (argc >= 5)
+    {
+        raio_planeta = std::stof(argv[1]);
+        sol_x = std::stof(argv[2]), sol_y = std::stof(argv[3]), sol_z = std::stof(argv[4]);
+    }
     if (raio_planeta <= 0.0f)
     {
         std::cout << "O raio do planeta deve ser positivo\n";
