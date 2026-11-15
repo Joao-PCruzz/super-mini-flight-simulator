@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <array>
+#include <vector>
+#include <algorithm>
 #include <cmath>
 
 // Comando para compilar o código:
@@ -70,31 +72,41 @@ bool modo_visual = false;
 // Variável para evitar o corte de planos
 float plano_proximo = 0.1f; 
 
-// Função para desenhar a esfera, seguindo uma lógica em camadas e utilizando laços aninhados
-void desenharEsfera(float raio, int latitude, int longitude) {
-    // Laço para criar dois aneis paralelos, calculando sua latitude de -90° até 90°
-    for(int i = 0; i < latitude; i++) {
-        float lat0 = M_PI * (-0.5f + (float)i / latitude);
-        float z0 = raio * sinf(lat0); // Calcular a altura vertical do eixo Z no anel
-        float zr0 = raio * cosf(lat0); // Calcular o raio do anel desenhado
+// Vértices da esfera, gerados uma única vez
+std::vector<GLfloat> vertices_esfera;
 
-        float lat1 = M_PI * (-0.5 + (float)(i + 1) / latitude);
-        float z1 = raio * sinf(lat1);
-        float zr1 = raio * cosf(lat1);
+// Gera a malha da esfera como uma malha de triângulos
+void criarEsfera (int latitude, int longitude) {
+    vertices_esfera.clear();
+    vertices_esfera.reserve((size_t)latitude * longitude * 6 * 3);
 
-        // Laço para calcular a longitude em um ângulo de 0° até 360° e desenhar a malha
-        glBegin(GL_TRIANGLE_STRIP);
-            for (int j = 0; j <= longitude; j++) {
-                float lng = 2.0f * M_PI * (float)j / longitude;
-                float x = cosf(lng); // Componente de direção x
-                float y = sinf(lng); // Componente de direção y
+    // Calcula o vértice a partir da latitude e da longitude
+    auto ponto = [&](int i, int j) {
+        float lat = (float)M_PI * (-0.5f + (float)i / latitude); // -90° até 90°
+        float lng = 2.0f * (float)M_PI * (float)j / longitude; // 0° até 360°
+        vertices_esfera.push_back(cosf(lat) * cosf(lng));
+        vertices_esfera.push_back(cosf(lat) * sinf(lng));
+        vertices_esfera.push_back(sinf(lat));
+    };
 
-                // Criação dos vértices
-                glVertex3f(x * zr0, y * zr0, z0);
-                glVertex3f(x * zr1, y * zr1, z1);
-            }
-        glEnd();
+    for (int i = 0; i < latitude; i++) {
+        for (int j = 0; j < longitude; j++) {
+            // Cada "quadrado" entre doi aneis vira dois triângulos
+            ponto(i, j); ponto(i+1, j); ponto(i, j+1);
+            ponto(i+1, j); ponto(i+1, j+1); ponto(i, j+1);
+        }
     }
+}
+
+// Desenha a esfera inteira e uma só vez com vertex arrays
+void desenharEsfera(float raio) {
+    glPushMatrix();
+        glScalef(raio, raio, raio); // Aumenta a esfera unitária até o raio pedido
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, vertices_esfera.data());
+        glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(vertices_esfera.size() / 3));
+        glDisableClientState(GL_VERTEX_ARRAY);
+    glPopMatrix();
 }
 
 void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
@@ -196,14 +208,14 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
     // Desenhar o planeta
     glPushMatrix();
         glColor3ub(0, 255, 0);
-        desenharEsfera(raio_planeta, 20, 40);
+        desenharEsfera(raio_planeta);
     glPopMatrix();
 
     // Desenhar sol
     glPushMatrix();
         glTranslatef(sol_x, sol_y, sol_z);
         glColor3ub(255, 255, 0);
-        desenharEsfera(raio_sol, 20, 40);
+        desenharEsfera(raio_sol);
     glPopMatrix();
 }
 
@@ -263,6 +275,9 @@ void iniciar(float limite_visao) {
     // Cor de limpeza: preto
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glEnable(GL_DEPTH_TEST); // Ativa o teste de profundidade dos Z-Buffers
+
+    // Gera uma única vez a malha da esfera
+    criarEsfera(20, 40);
 
     // Configura a projeção
     glMatrixMode(GL_PROJECTION);
