@@ -72,7 +72,7 @@ bool modo_visual = false;
 // Variável para evitar o corte de planos
 float plano_proximo = 0.1f; 
 
-// Vértices da esfera, gerados uma única vez
+// Vértices da esfera de raio 1, gerados uma única vez
 std::vector<GLfloat> vertices_esfera;
 
 // Gera a malha da esfera como uma malha de triângulos
@@ -103,10 +103,39 @@ void desenharEsfera(float raio) {
     glPushMatrix();
         glScalef(raio, raio, raio); // Aumenta a esfera unitária até o raio pedido
         glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_NORMAL_ARRAY);
         glVertexPointer(3, GL_FLOAT, 0, vertices_esfera.data());
+        glNormalPointer(GL_FLOAT, 0, vertices_esfera.data());
         glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(vertices_esfera.size() / 3));
+        glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
     glPopMatrix();
+}
+
+// Intensidade da luz ambiente global (0 sem luz e 1 com muita luz)
+float LUZ_AMBIENTE = 0.5f;
+
+// Função para iluminar a cena (ativar o shading)
+void iluminar() {
+    glShadeModel(GL_SMOOTH); // Interpola cor entre vértices
+    glEnable(GL_LIGHTING); 
+    glEnable(GL_LIGHT0); 
+    glEnable(GL_NORMALIZE); // Renormaliza as normais
+
+    // A cor do material passa a ser definida pela iluminação
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+    // Luz do sol
+    GLfloat luz_ambiente[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    GLfloat luz_difusa[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_AMBIENT, luz_ambiente);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, luz_difusa);
+
+    
+    // Configura a luz ambiente, para evitar que tudo fique preto
+    GLfloat ambiente_global[] = {LUZ_AMBIENTE, LUZ_AMBIENTE, LUZ_AMBIENTE, 1.0f};
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambiente_global);
 }
 
 void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
@@ -205,6 +234,10 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
             alvo.coordinates[0], alvo.coordinates[1], alvo.coordinates[2],
             aviao.cima.coordinates[0], aviao.cima.coordinates[1], aviao.cima.coordinates[2]);
 
+    // A posição da luz/sol deve vir depois da alteração da posição da câmera
+    GLfloat posicao_luz[] = {sol_x, sol_y, sol_z, 1.0f};
+    glLightfv(GL_LIGHT0, GL_POSITION, posicao_luz);
+
     // Desenhar o planeta
     glPushMatrix();
         glColor3ub(0, 255, 0);
@@ -214,8 +247,11 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
     // Desenhar sol
     glPushMatrix();
         glTranslatef(sol_x, sol_y, sol_z);
+        // O so é a própria luz, por isso desenha sem luz e com cor cheia
+        glDisable(GL_LIGHTING);
         glColor3ub(255, 255, 0);
         desenharEsfera(raio_sol);
+        glEnable(GL_LIGHTING);
     glPopMatrix();
 }
 
@@ -279,6 +315,9 @@ void iniciar(float limite_visao) {
     // Gera uma única vez a malha da esfera
     criarEsfera(20, 40);
 
+    // Liga o shading e a luz do sol
+    iluminar();
+
     // Configura a projeção
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -320,7 +359,7 @@ int main(int argc, char *argv[]) {
     if(!glfwInit()) return -1;
 
     // Criação da janela
-    GLFWwindow* window = glfwCreateWindow(600, 600, "Super Mini Fligth Simulator - Fase 2", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(600, 600, "Super Mini Fligth Simulator - Fase 3", NULL, NULL);
     // Libera recursos se algo der errado na janela
     if(!window) {
         glfwTerminate();
