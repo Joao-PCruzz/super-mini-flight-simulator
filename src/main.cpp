@@ -7,6 +7,8 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 // Comando para compilar o código:
 // make run ARGS="<raio_terra> <x_sol> <y_sol> <z_sol>"
@@ -75,6 +77,46 @@ float plano_proximo = 0.1f;
 // Vértices da esfera de raio 1, gerados uma única vez
 std::vector<GLfloat> vertices_esfera;
 
+// Mapeamento dos vertices na textura
+std::vector<GLfloat> texels;
+// Texturas
+GLuint textura_planeta, textura_sol;
+
+// Carrega uma textura a partir de um arquivo de imagem
+GLuint criarTextura(const char* caminho)
+{
+    int largura, altura, canais;
+    // Carrega a imagem
+    unsigned char* imagem = stbi_load(caminho, &largura, &altura, &canais, 0);
+    // Tratamento de erro em caso de não ser possível leitura
+    if (imagem == nullptr)
+    {
+        std::cout << "Não foi possível carregar textura em " << caminho << '\n';
+        return 0;
+    }
+    // Tratamento de erro em caso de numero de canais invalidos
+    if (canais != 3 && canais != 4)
+    {
+        std::cout << "Formato de imagem não suportado\n";
+        return 0;
+    }
+    // Define formato para RGB u RGBA dependendo do numero de canais da imagem
+    GLenum formato = canais == 4 ? GL_RGBA : GL_RGB;
+    // Textura
+    GLuint textura;
+    glGenTextures(1, &textura);
+    glBindTexture(GL_TEXTURE_2D, textura);
+    // Configurações da textura
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, formato, largura, altura, 0, formato, GL_UNSIGNED_BYTE, imagem);
+    // Libera a imagem da memoria
+    stbi_image_free(imagem);
+    return textura;
+}
+
 // Gera a malha da esfera como uma malha de triângulos
 void criarEsfera (int latitude, int longitude) {
     vertices_esfera.clear();
@@ -82,11 +124,15 @@ void criarEsfera (int latitude, int longitude) {
 
     // Calcula o vértice a partir da latitude e da longitude
     auto ponto = [&](int i, int j) {
+        float u = (float)j / longitude;
+        float v = (float)i / latitude;
         float lat = (float)M_PI * (-0.5f + (float)i / latitude); // -90° até 90°
         float lng = 2.0f * (float)M_PI * (float)j / longitude; // 0° até 360°
         vertices_esfera.push_back(cosf(lat) * cosf(lng));
         vertices_esfera.push_back(cosf(lat) * sinf(lng));
         vertices_esfera.push_back(sinf(lat));
+        texels.push_back(u);
+        texels.push_back(v);
     };
 
     for (int i = 0; i < latitude; i++) {
@@ -99,17 +145,22 @@ void criarEsfera (int latitude, int longitude) {
 }
 
 // Desenha a esfera inteira e uma só vez com vertex arrays
-void desenharEsfera(float raio) {
+void desenharEsfera(float raio, GLfloat textura) {
+    glEnable(GL_TEXTURE_2D);
     glPushMatrix();
         glScalef(raio, raio, raio); // Aumenta a esfera unitária até o raio pedido
+        glBindTexture(GL_TEXTURE_2D, textura);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_NORMAL_ARRAY);
+        glTexCoordPointer(2, GL_FLOAT, 0, texels.data());
         glVertexPointer(3, GL_FLOAT, 0, vertices_esfera.data());
         glNormalPointer(GL_FLOAT, 0, vertices_esfera.data());
         glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(vertices_esfera.size() / 3));
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
     glPopMatrix();
+    glDisable(GL_TEXTURE_2D);
 }
 
 // Intensidade da luz ambiente global (0 sem luz e 1 com muita luz)
@@ -240,8 +291,8 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
 
     // Desenhar o planeta
     glPushMatrix();
-        glColor3ub(0, 255, 0);
-        desenharEsfera(raio_planeta);
+        glColor3ub(255, 255, 255);
+        desenharEsfera(raio_planeta, textura_planeta);
     glPopMatrix();
 
     // Desenhar sol
@@ -249,8 +300,8 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
         glTranslatef(sol_x, sol_y, sol_z);
         // O so é a própria luz, por isso desenha sem luz e com cor cheia
         glDisable(GL_LIGHTING);
-        glColor3ub(255, 255, 0);
-        desenharEsfera(raio_sol);
+        glColor3ub(255, 255, 255);
+        desenharEsfera(raio_sol, textura_sol);
         glEnable(GL_LIGHTING);
     glPopMatrix();
 }
@@ -314,6 +365,10 @@ void iniciar(float limite_visao) {
 
     // Gera uma única vez a malha da esfera
     criarEsfera(20, 40);
+
+    // Gera as texturas
+    textura_planeta = criarTextura("assets/textures/2k_mercury.jpg");
+    textura_sol = criarTextura("assets/textures/2k_sun.jpg");
 
     // Liga o shading e a luz do sol
     iluminar();
