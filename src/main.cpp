@@ -69,24 +69,70 @@ struct Aviao {
 };
 Aviao aviao;
 
+// Mapa de altura para alterar a geometria da esfera
+struct MapaElevacao {
+    // imagem correspondente as alturas
+    unsigned char* mapa;
+    // dimensões da imagem
+    int altura;
+    int largura;
+    // escala das alturas
+    float escala;
+    // calcular altura do ponto na imagem fazendo interpolação
+    float h(float u, float v)
+    {
+        // Wrap horizontal e clamp vertical
+        u = u - floor(u);
+        v = std::clamp(v, 0.0f, 1.0f);
+        float y = (altura - 1) * v;
+        float x = (largura - 1) * u;
+        int y0 = floor(y);
+        int x0 = floor(x);
+        int x1 = (x0 + 1) % largura;
+        int y1 = std::min(y0 + 1, altura - 1);
+        float fx0 = (float) mapa[y0 * largura + x0];
+        float fx1 = (float) mapa[y0 * largura + x1];
+        if (y1 != y0)
+        {
+            fx0 += ((y - y0) / (y1 - y0)) * ((float) mapa[y1 * largura + x0] - (float) mapa[y0 * largura + x0]);
+            fx1 += ((y - y0) / (y1 - y0)) * ((float) mapa[y1 * largura + x1] - (float) mapa[y0 * largura + x1]);
+        }
+        float elevacao = fx0;
+        if (x1 != x0)
+        {
+            elevacao += ((x - x0) / (x1 - x0)) * (fx1 - fx0);
+        }
+        float elevacao_normalizada = elevacao / UINT8_MAX;
+        return elevacao_normalizada * escala;
+    }
+};
+
 // Variável global para capturar o modo de exibição das formas
 bool modo_visual = false; 
 // Variável para evitar o corte de planos
 float plano_proximo = 0.1f; 
 
-// Vértices da esfera de raio 1, gerados uma única vez
-std::vector<GLfloat> vertices_esfera;
+// Vértices das esferas de raio 1
+std::vector<GLfloat> vertices_planeta;
+std::vector<GLfloat> vertices_sol;
 
 // Mapeamento dos vertices na textura
 std::vector<GLfloat> texels;
 // Texturas
 GLuint textura_planeta, textura_sol;
 
+// Heightmaps
+MapaElevacao height_map_planeta;
+
+// Normalmap
+std::vector<GLfloat> normals;
+
 // Carrega uma textura a partir de um arquivo de imagem
 GLuint criarTextura(const char* caminho)
 {
     int largura, altura, canais;
     // Carrega a imagem
+    stbi_set_flip_vertically_on_load(true);
     unsigned char* imagem = stbi_load(caminho, &largura, &altura, &canais, 0);
     // Tratamento de erro em caso de não ser possível leitura
     if (imagem == nullptr)
@@ -117,8 +163,20 @@ GLuint criarTextura(const char* caminho)
     return textura;
 }
 
+MapaElevacao criarMapaElevacao(const char* caminho, float escala)
+{
+    MapaElevacao height_map;
+    stbi_set_flip_vertically_on_load(true);
+    int canais;
+    height_map.mapa = stbi_load(caminho, &height_map.largura, &height_map.altura, &canais, 0);
+    height_map.escala = escala;
+    return height_map;
+}
+
 // Gera a malha da esfera como uma malha de triângulos
-void criarEsfera (int latitude, int longitude) {
+void criarEsfera (int latitude, int longitude, std::vector<GLfloat> &vertices_esfera) {
+    texels.clear();
+    texels.reserve((size_t)latitude * longitude * 6 * 2);
     vertices_esfera.clear();
     vertices_esfera.reserve((size_t)latitude * longitude * 6 * 3);
 
@@ -144,8 +202,37 @@ void criarEsfera (int latitude, int longitude) {
     }
 }
 
+void criarEsfera (int latitude, int longitude, MapaElevacao height_map, std::vector<GLfloat> &vertices_esfera) {
+    texels.clear();
+    texels.reserve((size_t)latitude * longitude * 6 * 2);
+    vertices_esfera.clear();
+    vertices_esfera.reserve((size_t)latitude * longitude * 6 * 3);
+
+    // Calcula o vértice a partir da latitude e da longitude
+    auto ponto = [&](int i, int j) {
+        float u = (float)j / longitude;
+        float v = (float)i / latitude;
+        float lat = (float)M_PI * (-0.5f + (float)i / latitude); // -90° até 90°
+        float lng = 2.0f * (float)M_PI * (float)j / longitude; // 0° até 360°
+        float r = 1.0f + height_map.h(u, v);
+        vertices_esfera.push_back(r * cosf(lat) * cosf(lng));
+        vertices_esfera.push_back(r * cosf(lat) * sinf(lng));
+        vertices_esfera.push_back(r * sinf(lat));
+        texels.push_back(u);
+        texels.push_back(v);
+    };
+
+    for (int i = 0; i < latitude; i++) {
+        for (int j = 0; j < longitude; j++) {
+            // Cada "quadrado" entre doi aneis vira dois triângulos
+            ponto(i, j); ponto(i+1, j); ponto(i, j+1);
+            ponto(i+1, j); ponto(i+1, j+1); ponto(i, j+1);
+        }
+    }
+}
+
 // Desenha a esfera inteira e uma só vez com vertex arrays
-void desenharEsfera(float raio, GLfloat textura) {
+void desenharEsfera(float raio, GLuint textura, const std::vector<GLfloat> &vertices_esfera, const std::vector<GLfloat> &normals) {
     glEnable(GL_TEXTURE_2D);
     glPushMatrix();
         glScalef(raio, raio, raio); // Aumenta a esfera unitária até o raio pedido
@@ -155,7 +242,7 @@ void desenharEsfera(float raio, GLfloat textura) {
         glEnableClientState(GL_NORMAL_ARRAY);
         glTexCoordPointer(2, GL_FLOAT, 0, texels.data());
         glVertexPointer(3, GL_FLOAT, 0, vertices_esfera.data());
-        glNormalPointer(GL_FLOAT, 0, vertices_esfera.data());
+        glNormalPointer(GL_FLOAT, 0, normals.data());
         glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(vertices_esfera.size() / 3));
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
@@ -237,7 +324,16 @@ void atualizarFisica(Aviao& aviao, float dt, float raio_planeta) {
     aviao.posicao = aviao.posicao + (aviao.frente * aviao.velocidade * dt);
 
     // Renormalizando as coordenadas
-    float altitude_desejada = raio_planeta + aviao.altura_atual;
+    Vetor3 p = aviao.posicao.normalizado();
+    float lat = asin(p.coordinates[2]);
+    float lng = atan2(p.coordinates[1], p.coordinates[0]);
+    if (lng < 0.0f)
+    {
+        lng += 2.0f * (float)M_PI;
+    }
+    float v = (lat / M_PI) + 0.5f;
+    float u = (lng / (2 * M_PI));
+    float altitude_desejada = raio_planeta * (1.0f + height_map_planeta.h(u, v)) + aviao.altura_atual;
     aviao.posicao = aviao.posicao.normalizado() * altitude_desejada;
     aviao.cima = aviao.posicao.normalizado();
     aviao.frente = ( (aviao.frente - aviao.cima * dot(aviao.frente, aviao.cima)).normalizado() );
@@ -292,7 +388,7 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
     // Desenhar o planeta
     glPushMatrix();
         glColor3ub(255, 255, 255);
-        desenharEsfera(raio_planeta, textura_planeta);
+        desenharEsfera(raio_planeta, textura_planeta, vertices_planeta, normals);
     glPopMatrix();
 
     // Desenhar sol
@@ -301,7 +397,7 @@ void desenhar(float raio_planeta, float raio_sol, float sol_x, float sol_y, floa
         // O so é a própria luz, por isso desenha sem luz e com cor cheia
         glDisable(GL_LIGHTING);
         glColor3ub(255, 255, 255);
-        desenharEsfera(raio_sol, textura_sol);
+        desenharEsfera(raio_sol, textura_sol, vertices_sol, vertices_sol);
         glEnable(GL_LIGHTING);
     glPopMatrix();
 }
@@ -363,11 +459,33 @@ void iniciar(float limite_visao) {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glEnable(GL_DEPTH_TEST); // Ativa o teste de profundidade dos Z-Buffers
 
-    // Gera uma única vez a malha da esfera
-    criarEsfera(20, 40);
+    // Gera os heightmaps
+    height_map_planeta = criarMapaElevacao("assets/bumpmaps/dark_rock_disp_1k.png", 0.25);
+
+    // Gera as malhas das esferas
+    criarEsfera(200, 400, height_map_planeta, vertices_planeta);
+    for (long long unsigned int i = 0; i + 9 <= vertices_planeta.size(); i += 9)
+    {
+        // Produto vetorial entre os vetores do triangulo
+        Vetor3 pa = {vertices_planeta[i], vertices_planeta[i + 1], vertices_planeta[i + 2], 1.0f};
+        Vetor3 pb = {vertices_planeta[i + 3], vertices_planeta[i + 4], vertices_planeta[i + 5], 1.0f};
+        Vetor3 pc = {vertices_planeta[i + 6], vertices_planeta[i + 7], vertices_planeta[i + 8], 1.0f};
+        Vetor3 normal = cross(pb - pa, pc - pa).normalizado();
+        // Garante que ele aponta pra fora do planeta
+        if (dot(normal, pa) < 0.0f)
+        {   
+            normal = normal * -1.0f;
+        }
+        for (int k = 0; k < 3; k++) {
+            normals.push_back(normal.coordinates[0]);
+            normals.push_back(normal.coordinates[1]);
+            normals.push_back(normal.coordinates[2]);
+        }
+    }
+    criarEsfera(200, 400, vertices_sol);
 
     // Gera as texturas
-    textura_planeta = criarTextura("assets/textures/2k_mercury.jpg");
+    textura_planeta = criarTextura("assets/textures/dark_rock_diff_1k.jpg");
     textura_sol = criarTextura("assets/textures/2k_sun.jpg");
 
     // Liga o shading e a luz do sol
@@ -430,7 +548,7 @@ int main(int argc, char *argv[]) {
     
     iniciar(limite_visao);
 
-    aviao.posicao = {0.0f, raio_planeta, 0.0f, 1.0};
+    aviao.posicao = {0.0f, raio_planeta * (1.0f + height_map_planeta.h(0.25f, 0.5f)), 0.0f, 1.0};
     aviao.cima = aviao.posicao.normalizado();
     aviao.frente = {0.0f, 0.0f, -1.0f, 0.0f};
     float tempo_anterior = (float)glfwGetTime();
